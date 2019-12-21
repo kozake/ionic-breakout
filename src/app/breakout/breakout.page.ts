@@ -57,6 +57,15 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
   // ゲームが開始したかどうか
   isGameStart: boolean;
 
+  // ゲームをクリアしたかどうか
+  isGameClear: boolean;
+
+  // ゲームをゲームオーバーしたかどうか
+  isGameOver: boolean;
+
+  // リスタートフラグ
+  restart: boolean;
+
   constructor(private zone: NgZone) {}
 
   ngOnInit() {
@@ -111,6 +120,9 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
     this.ballDx = 5;
     this.ballDy = -5;
     this.isGameStart = false;
+    this.isGameClear = false;
+    this.isGameOver = false;
+    this.restart = false;
 
     // タッチ、ポインター、およびマウスイベントの有効化
     this.gameStage.interactive = true;
@@ -159,6 +171,9 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
   }
 
   onFrame(delta: number) {
+    if (this.isGameOver || this.isGameClear) {
+      return;
+    }
     this.moveRacket();
     if (!this.isGameStart) {
       this.ball.x = this.racket.x + this.racket.width / 2 - this.ball.width / 2;
@@ -235,6 +250,45 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
       this.ball.y = 0;
       this.ballDy *= -1;
     }
+    // 下に落ちた？
+    if (this.ball.y > SCREEN_HEIGHT) {
+      this.gameOver();
+      return;
+    }
+
+    // 全てのブロックを消した？
+    if (this.blocks.length === 0) {
+      this.gameClear();
+      return;
+    }
+  }
+
+  private gameClear() {
+    this.isGameClear = true;
+    const gameclearText = this.createText('GAME CLEAR!!');
+    this.gameStage.addChild(gameclearText);
+  }
+
+  private gameOver() {
+    this.isGameOver = true;
+
+    const gameOverText = this.createText('GAME OVER');
+    this.gameStage.addChild(gameOverText);
+  }
+
+  private createText(text: string): PIXI.Text {
+    const gameClearText = new PIXI.Text(
+      text,
+      new PIXI.TextStyle({
+        fontFamily: 'Arial',
+        fontSize: 72,
+        fill: ['#00ffff']
+      })
+    );
+    gameClearText.x = SCREEN_WIDTH / 2 - gameClearText.width / 2;
+    gameClearText.y = (SCREEN_HEIGHT / 10) * 4;
+
+    return gameClearText;
   }
 
   private moveRacket() {
@@ -264,6 +318,9 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
     if (this.touchDownCount === 1) {
       this.lastTouchDownX = event.data.global.x;
       this.racketTargetX = this.racket.x;
+      if (this.isGameClear || this.isGameOver) {
+        this.restart = true;
+      }
     }
   }
 
@@ -275,6 +332,10 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
     this.touchDownCount--;
     if (this.touchDownCount <= 0) {
       this.isGameStart = true;
+      if (this.restart) {
+        this.app.stage.removeChild(this.gameStage);
+        this.onInit();
+      }
       this.touchDownCount = 0;
     }
   }
