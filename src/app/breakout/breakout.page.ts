@@ -265,7 +265,7 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
 
   private gameClear() {
     this.isGameClear = true;
-    const gameclearText = this.createText('GAME CLEAR!!');
+    const gameclearText = this.createText('Merry Christmas!!');
     this.gameStage.addChild(gameclearText);
   }
 
