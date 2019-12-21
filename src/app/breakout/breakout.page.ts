@@ -48,6 +48,15 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
   // ラケットの目指すX座標
   racketTargetX: number;
 
+  // ボールのX方向距離
+  ballDx: number;
+
+  // ボールのY方向距離
+  ballDy: number;
+
+  // ゲームが開始したかどうか
+  isGameStart: boolean;
+
   constructor(private zone: NgZone) {}
 
   ngOnInit() {
@@ -99,6 +108,9 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
     this.touchDownCount = 0;
     this.lastTouchDownX = 0;
     this.racketTargetX = this.racket.x;
+    this.ballDx = 5;
+    this.ballDy = -5;
+    this.isGameStart = false;
 
     // タッチ、ポインター、およびマウスイベントの有効化
     this.gameStage.interactive = true;
@@ -148,7 +160,81 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
 
   onFrame(delta: number) {
     this.moveRacket();
-    this.ball.x = this.racket.x + this.racket.width / 2 - this.ball.width / 2;
+    if (!this.isGameStart) {
+      this.ball.x = this.racket.x + this.racket.width / 2 - this.ball.width / 2;
+      return;
+    }
+    this.ball.y += this.ballDy;
+
+    for (let i = 0; i < this.blocks.length; i++) {
+      const block = this.blocks[i];
+      // ブロックと衝突した？
+      if (this.isHitBlock(block)) {
+        this.gameStage.removeChild(block);
+        this.blocks.splice(i, 1);
+        // ブロックとの衝突位置にずらす
+        this.ball.y =
+          this.ballDy > 0
+            ? block.y - this.ball.height - 1
+            : block.y + block.height + 1;
+        this.ballDy *= -1;
+        break;
+      }
+    }
+
+    // ラケットと衝突した？
+    if (this.isHitBlock(this.racket)) {
+      // ラケットとの衝突位置にずらす
+      this.ball.y =
+        this.ballDy > 0
+          ? this.racket.y - this.ball.height - 1
+          : this.racket.y + this.racket.height + 1;
+      this.ballDy *= -1;
+    }
+
+    this.ball.x += this.ballDx;
+
+    for (let i = 0; i < this.blocks.length; i++) {
+      const block = this.blocks[i];
+      // ブロックと衝突した？
+      if (this.isHitBlock(block)) {
+        this.gameStage.removeChild(block);
+        this.blocks.splice(i, 1);
+        // ブロックとの衝突位置にずらす
+        this.ball.x =
+          this.ballDx > 0
+            ? block.x - this.ball.width - 1
+            : block.x + block.width + 1;
+        this.ballDx *= -1;
+        break;
+      }
+    }
+
+    // ラケットと衝突した？
+    if (this.isHitBlock(this.racket)) {
+      this.ball.x =
+        // ラケットとの衝突位置にずらす
+        this.ballDx > 0
+          ? this.racket.x - this.ball.width - 1
+          : this.racket.x + this.racket.width + 1;
+      this.ballDx *= -1;
+    }
+
+    // 左の壁に衝突した？
+    if (this.ball.x <= 0) {
+      this.ball.x = 0;
+      this.ballDx *= -1;
+    }
+    // 右の壁に衝突した？
+    if (this.ball.x >= SCREEN_WIDTH - this.ball.width) {
+      this.ball.x = SCREEN_WIDTH - this.ball.width;
+      this.ballDx *= -1;
+    }
+    // 上の壁に衝突した？
+    if (this.ball.y <= 0) {
+      this.ball.y = 0;
+      this.ballDy *= -1;
+    }
   }
 
   private moveRacket() {
@@ -158,6 +244,15 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
     } else {
       this.racket.x += add;
     }
+  }
+
+  private isHitBlock(block: PIXI.Sprite) {
+    return (
+      this.ball.x <= block.x + block.width &&
+      this.ball.x + this.ball.width >= block.x &&
+      this.ball.y <= block.y + block.height &&
+      this.ball.y + this.ball.height >= block.y
+    );
   }
 
   /**
@@ -179,6 +274,7 @@ export class BreakoutPage implements OnInit, AfterViewChecked {
   private onTouchEnd(event: PIXI.interaction.InteractionEvent) {
     this.touchDownCount--;
     if (this.touchDownCount <= 0) {
+      this.isGameStart = true;
       this.touchDownCount = 0;
     }
   }
